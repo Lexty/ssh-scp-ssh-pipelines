@@ -25,7 +25,10 @@ inputs:
     description: 'execute pre-commands before scp'
     required: false
   scp:
-    description: 'scp from local to remote'
+    description: 'scp from local to remote (upload)'
+    required: false
+  scp_download:
+    description: 'scp from remote to local (download)'
     required: false
   last_ssh:
     description: 'execute post-commands after scp'

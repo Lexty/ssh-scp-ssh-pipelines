@@ -1,5 +1,7 @@
 # SSH SCP SSH Pipelines
 
+Fork of [cross-the-world/ssh-scp-ssh-pipelines](https://github.com/cross-the-world/ssh-scp-ssh-pipelines) with bidirectional SCP support.
+
 [Github actions](https://help.github.com/en/actions/creating-actions/creating-a-docker-container-action)
 
 [SSH action](https://github.com/cross-the-world/ssh-pipeline)
@@ -8,8 +10,9 @@
 
 This action allows doing in order
 1. ssh if defined
-2. scp if defined
-3. ssh if defined
+2. scp upload if defined
+3. scp download if defined
+4. ssh if defined
 
 ## Inputs
 see the [action.yml](./action.yml) file for more detail imformation.
@@ -44,12 +47,21 @@ see the [action.yml](./action.yml) file for more detail imformation.
 
 ### `scp`
 
-**NOT Required** scp from local to remote.
+**NOT Required** scp from local to remote (upload).
 
 **Syntax**
 local_path => remote_path
 e.g.
 /opt/test/* => /home/github/test
+
+### `scp_download`
+
+**NOT Required** scp from remote to local (download).
+
+**Syntax**
+remote_path => local_path
+e.g.
+/home/github/test/* => ./downloaded/
 
 ### `last_ssh`
 
@@ -59,10 +71,10 @@ e.g.
 ## Usages
 see the [deploy.yml](./.github/workflows/deploy.yml) file for more detail imformation.
 
-#### ssh scp ssh pipelines
+#### ssh scp ssh pipelines with download
 ```yaml
-- name: ssh scp ssh pipelines
-  uses: cross-the-world/ssh-scp-ssh-pipelines@latest
+- name: ssh scp ssh pipelines with download
+  uses: Lexty/ssh-scp-ssh-pipelines@v1.2.0
   env:
     WELCOME: "ssh scp ssh pipelines"
     LASTSSH: "Doing something after copying"
@@ -74,47 +86,69 @@ see the [deploy.yml](./.github/workflows/deploy.yml) file for more detail imform
     connect_timeout: 10s
     first_ssh: |
       rm -rf /home/github/test
-      ls -la  \necho $WELCOME 
+      ls -la \necho $WELCOME 
       mkdir -p /home/github/test/test1 && 
       mkdir -p /home/github/test/test2 &&
     scp: |
       './test/*' => /home/github/test/
       ./test/test1* => /home/github/test/test1/
       ./test/test*.csv => "/home/github/test/test2/"
+    scp_download: |
+      /home/github/test/logs/* => ./downloaded/logs/
+      /home/github/test/output.txt => ./downloaded/
     last_ssh: |
       echo $LASTSSH && 
       (mkdir test1/test || true)
       || ls -la
 ```
 
-#### scp ssh pipelines
+#### scp download pipeline
 ```yaml
-- name: scp ssh pipelines
-  uses: cross-the-world/ssh-scp-ssh-pipelines@latest
-  env:
-    LASTSSH: "Doing something after copying"
+- name: scp download pipeline
+  uses: Lexty/ssh-scp-ssh-pipelines@v1.2.0
   with:
     host: ${{ secrets.DC_HOST }}
     user: ${{ secrets.DC_USER }}
     pass: ${{ secrets.DC_PASS }}
-    scp: |
-      ./test/test1* => /home/github/test/test1/
-      ./test/test*.csv => "/home/github/test/test2/"
-    last_ssh: |
-      echo $LASTSSH 
-      ls -la
+    scp_download: |
+      /home/github/test/logs/* => ./downloaded/logs/
+      /home/github/test/output.txt => ./downloaded/
 ```
 
-#### scp pipelines
+#### scp upload and download pipelines
 ```yaml
-- name: scp pipelines
-  uses: cross-the-world/ssh-scp-ssh-pipelines@latest
+- name: scp upload and download pipelines
+  uses: Lexty/ssh-scp-ssh-pipelines@v1.2.0
   with:
     host: ${{ secrets.DC_HOST }}
     user: ${{ secrets.DC_USER }}
     pass: ${{ secrets.DC_PASS }}
     scp: |
       './test/*' => /home/github/test/
+    scp_download: |
+      /home/github/test/logs/* => ./downloaded/logs/
 ```
 
-  
+# Changelog
+
+### v1.2.0
+- Added bidirectional SCP support with new `scp_download` parameter
+- Updated workflow pipeline to support file download from remote server
+- Improved documentation with examples for download functionality
+- Renamed original `scp_process` function to `scp_upload_process` for clarity
+
+### v1.1.0
+- Original version from cross-the-world/ssh-scp-ssh-pipelines
+
+# About this fork
+
+This fork adds the ability to download files from the remote server to the local machine, completing the bidirectional file transfer capabilities of the original action. The original action only supported uploading files to the remote server.
+
+## Contributors
+
+Original author: Scott Ng <thuongnht@gmail.com>
+Fork maintainer: Aleksandr Medvedev <alexandr.mdr@gmail.com>
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

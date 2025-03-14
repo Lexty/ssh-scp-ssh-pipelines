@@ -1,11 +1,12 @@
 FROM python:3.8.3-slim-buster
 
-LABEL "maintainer"="Scott Ng <thuongnht@gmail.com>"
-LABEL "repository"="https://github.com/cross-the-world/ssh-scp-ssh-pipelines"
-LABEL "version"="v1.1.0"
+LABEL "maintainer"="Aleksandr Medvedev <alexandr.mdr@gmail.com>"
+LABEL "original-author"="Scott Ng <thuongnht@gmail.com>"
+LABEL "repository"="https://github.com/Lexty/ssh-scp-ssh-pipelines"
+LABEL "version"="v1.2.0"
 
 LABEL "com.github.actions.name"="ssh-scp-ssh-pipelines"
-LABEL "com.github.actions.description"="Pipeline: ssh -> scp -> ssh"
+LABEL "com.github.actions.description"="Pipeline: ssh -> scp(upload) -> scp(download) -> ssh"
 LABEL "com.github.actions.icon"="terminal"
 LABEL "com.github.actions.color"="gray-dark"
 

@@ -18,6 +18,7 @@ INPUT_PASS = envs.get("INPUT_PASS")
 INPUT_KEY = envs.get("INPUT_KEY")
 INPUT_CONNECT_TIMEOUT = envs.get("INPUT_CONNECT_TIMEOUT", "30s")
 INPUT_SCP = envs.get("INPUT_SCP")
+INPUT_SCP_DOWNLOAD = envs.get("INPUT_SCP_DOWNLOAD")
 INPUT_FIRST_SSH = envs.get("INPUT_FIRST_SSH")
 INPUT_LAST_SSH = envs.get("INPUT_LAST_SSH")
 
@@ -63,11 +64,11 @@ def connect(callback=None):
     except Exception as err:
         print(f"Connect error\n{err}")
         sys.exit(1)
-        
+
     else:
         if callback:
             callback(ssh)
-            
+
     finally:
         os.unlink(tmp.name)
         tmp.close()
@@ -95,9 +96,9 @@ def ssh_process(ssh, input_ssh):
     print(command_str)
 
     stdin, stdout, stderr = ssh.exec_command(command_str)
-    
+
     ssh_exit_status = stdout.channel.recv_exit_status()
-    
+
     out = "".join(stdout.readlines())
     out = out.strip() if out is not None else None
     if out:
@@ -107,15 +108,15 @@ def ssh_process(ssh, input_ssh):
     err = err.strip() if err is not None else None
     if err:
         print(f"Error: \n{err}")
-    
+
     if  ssh_exit_status != 0:
         print(f"ssh exit status: {ssh_exit_status}")
         sys.exit(1)
-        
+
     pass
 
 
-def scp_process(ssh, input_scp):
+def scp_upload_process(ssh, input_scp):
     copy_list = []
     for c in input_scp.splitlines():
         if not c:
@@ -127,11 +128,11 @@ def scp_process(ssh, input_scp):
             if local and remote:
                 copy_list.append({"l": local, "r": remote})
                 continue
-        print(f"SCP ignored {c.strip()}")
+        print(f"SCP Upload ignored {c.strip()}")
     print(copy_list)
 
     if len(copy_list) <= 0:
-        print("SCP no copy list found")
+        print("SCP Upload no copy list found")
         return
 
     with scp.SCPClient(ssh.get_transport(), progress=progress, sanitize=lambda x: x) as conn:
@@ -142,14 +143,52 @@ def scp_process(ssh, input_scp):
             except Exception as err:
                 print(f"Remote mkdir error. Can't create {remote}\n{err}")
                 sys.exit(1)
-                
+
             for f in [f for f in glob(l2r.get('l'))]:
                 try:
                     conn.put(f, remote_path=remote, recursive=True)
                     print(f"{f} -> {remote}")
                 except Exception as err:
-                    print(f"Scp error. Can't copy {f} on {remote}\n{err}")
+                    print(f"Scp upload error. Can't copy {f} on {remote}\n{err}")
                     sys.exit(1)
+    pass
+
+
+def scp_download_process(ssh, input_scp_download):
+    copy_list = []
+    for c in input_scp_download.splitlines():
+        if not c:
+            continue
+        r2l = c.split("=>")
+        if len(r2l) == 2:
+            remote = strip_and_parse_envs(r2l[0])
+            local = strip_and_parse_envs(r2l[1])
+            if remote and local:
+                copy_list.append({"r": remote, "l": local})
+                continue
+        print(f"SCP Download ignored {c.strip()}")
+    print(copy_list)
+
+    if len(copy_list) <= 0:
+        print("SCP Download no copy list found")
+        return
+
+    with scp.SCPClient(ssh.get_transport(), progress=progress, sanitize=lambda x: x) as conn:
+        for r2l in copy_list:
+            local = r2l.get('l')
+            try:
+                # Create local directory if it doesn't exist
+                os.makedirs(os.path.dirname(local) if os.path.dirname(local) else local, exist_ok=True)
+            except Exception as err:
+                print(f"Local mkdir error. Can't create {local}\n{err}")
+                sys.exit(1)
+
+            try:
+                conn.get(r2l.get('r'), local_path=local, recursive=True)
+                print(f"{r2l.get('r')} -> {local}")
+            except Exception as err:
+                print(f"Scp download error. Can't copy {r2l.get('r')} to {local}\n{err}")
+                sys.exit(1)
     pass
 
 
@@ -165,10 +204,16 @@ def processes():
         connect(lambda c: ssh_process(c, INPUT_FIRST_SSH))
 
     if not INPUT_SCP:
-        print("SSH-SCP-SSH no scp input found")
+        print("SSH-SCP-SSH no scp upload input found")
     else:
-        print("+++++++++++++++++++Pipeline: RUNNING SCP+++++++++++++++++++")
-        connect(lambda c: scp_process(c, INPUT_SCP))
+        print("+++++++++++++++++++Pipeline: RUNNING SCP UPLOAD+++++++++++++++++++")
+        connect(lambda c: scp_upload_process(c, INPUT_SCP))
+
+    if not INPUT_SCP_DOWNLOAD:
+        print("SSH-SCP-SSH no scp download input found")
+    else:
+        print("+++++++++++++++++++Pipeline: RUNNING SCP DOWNLOAD+++++++++++++++++++")
+        connect(lambda c: scp_download_process(c, INPUT_SCP_DOWNLOAD))
 
     if not INPUT_LAST_SSH:
         print("SSH-SCP-SSH no last_ssh input found")
@@ -181,5 +226,3 @@ def processes():
 
 if __name__ == '__main__':
     processes()
-
-
